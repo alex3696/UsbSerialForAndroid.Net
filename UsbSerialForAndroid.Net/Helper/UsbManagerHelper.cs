@@ -22,7 +22,7 @@ namespace UsbSerialForAndroid.Net.Helper
         {
             return usbManager.DeviceList?
                 .Select(c => c.Value)
-                .FirstOrDefault(c => c.VendorId == vendorId && c.VendorId == productId)
+                .FirstOrDefault(c => c.VendorId == vendorId && c.ProductId == productId)
                 ?? throw new Exception($"The corresponding device could not be found VendorId={vendorId} ProductId={productId}");
         }
         public static bool HasPermission(UsbDevice usbDevice)
