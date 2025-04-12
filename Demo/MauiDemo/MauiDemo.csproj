@@ -61,29 +61,29 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.22" />
-		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.22" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.60" />
+		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.60" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.4" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\SharedResources\UsbSerialForAndroid.Resources.csproj" />
-	  <ProjectReference Include="..\..\UsbSerialForAndroid.Net\UsbSerialForAndroid.Net.csproj" />
+		<ProjectReference Include="..\..\SharedResources\UsbSerialForAndroid.Resources.csproj" />
+		<ProjectReference Include="..\..\UsbSerialForAndroid.Net\UsbSerialForAndroid.Net.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="AppResources.Designer.cs">
-	    <DesignTime>True</DesignTime>
-	    <AutoGen>True</AutoGen>
-	    <DependentUpon>AppResources.resx</DependentUpon>
-	  </Compile>
+		<Compile Update="AppResources.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>AppResources.resx</DependentUpon>
+		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
-	  <EmbeddedResource Update="AppResources.resx">
-	    <Generator>ResXFileCodeGenerator</Generator>
-	    <LastGenOutput>AppResources.Designer.cs</LastGenOutput>
-	  </EmbeddedResource>
+		<EmbeddedResource Update="AppResources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>AppResources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
 	</ItemGroup>
 
 </Project>
