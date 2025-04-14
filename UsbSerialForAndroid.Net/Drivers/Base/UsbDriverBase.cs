@@ -9,6 +9,9 @@ using UsbSerialForAndroid.Net.Exceptions;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
+    /// <summary>
+    /// USB driver base class
+    /// </summary>
     public abstract class UsbDriverBase
     {
         private static readonly UsbManager usbManager = GetUsbManager();
@@ -22,7 +25,7 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const Parity DefaultParity = Parity.None;
         public const int DefaultUsbInterfaceIndex = 0;
         /// <summary>
-        /// 流控制
+        /// flow control
         /// </summary>
         public FlowControl FlowControl { get; protected set; }
         /// <summary>
@@ -34,55 +37,62 @@ namespace UsbSerialForAndroid.Net.Drivers
         /// </summary>
         public bool RtsEnable { get; protected set; }
         /// <summary>
-        /// 要使用的USB接口索引
+        /// USB interface index to use
         /// </summary>
         public int UsbInterfaceIndex { get; set; } = DefaultUsbInterfaceIndex;
+        /// <summary>
+        /// USB manager
+        /// </summary>
         public static UsbManager UsbManager => usbManager;
         /// <summary>
-        /// 打开的USB设备
+        /// USB device
         /// </summary>
         public UsbDevice UsbDevice { get; private set; }
         /// <summary>
-        /// USB连接
+        /// USB device connection
         /// </summary>
         public UsbDeviceConnection? UsbDeviceConnection { get; protected set; }
         /// <summary>
-        /// USB接口
+        /// USB interface
         /// </summary>
         public UsbInterface? UsbInterface { get; protected set; }
         /// <summary>
-        /// USB读数据的端点
+        /// read endpoint
         /// </summary>
         public UsbEndpoint? UsbEndpointRead { get; protected set; }
         /// <summary>
-        /// USB写数据的端点
+        /// write endpoint
         /// </summary>
         public UsbEndpoint? UsbEndpointWrite { get; protected set; }
         /// <summary>
-        /// 读数据超时
+        /// read timeout
         /// </summary>
         public int ReadTimeout { get; set; } = DefaultTimeout;
         /// <summary>
-        /// 写数据超时
+        /// write timeout
         /// </summary>
         public int WriteTimeout { get; set; } = DefaultTimeout;
         /// <summary>
-        /// 控制数据超时
+        /// Control timeout
         /// </summary>
         public int ControlTimeout { get; set; } = DefaultTimeout;
         /// <summary>
-        /// 是否连接
+        /// is connected
         /// </summary>
         public bool Connected => TestConnection();
+        /// <summary>
+        /// USB driver base class
+        /// </summary>
+        /// <param name="_usbDevice"></param>
         protected UsbDriverBase(UsbDevice _usbDevice)
         {
             UsbDevice = _usbDevice;
         }
         /// <summary>
-        /// 获取UsbManager
+        /// Get usbManager
         /// </summary>
         /// <returns></returns>
-        /// <exception cref="NullReferenceException"></exception>
+        /// <exception cref="NullReferenceException">UsbManager is null exception</exception>
         private static UsbManager GetUsbManager()
         {
             var usebService = Application.Context.GetSystemService(Context.UsbService);
@@ -91,35 +101,35 @@ namespace UsbSerialForAndroid.Net.Drivers
                 : throw new NullReferenceException("UsbManager is null");
         }
         /// <summary>
-        /// 打开USB设备
+        /// open the usb device
         /// </summary>
-        /// <param name="baudRate"></param>
-        /// <param name="dataBits"></param>
-        /// <param name="stopBits"></param>
-        /// <param name="parity"></param>
+        /// <param name="baudRate">baudRate</param>
+        /// <param name="dataBits">dataBits</param>
+        /// <param name="stopBits">stopBits</param>
+        /// <param name="parity">parity</param>
         public abstract void Open(int baudRate, byte dataBits, StopBits stopBits, Parity parity);
         /// <summary>
-        /// 设置DTR使能
+        /// Set DTR enabled
         /// </summary>
-        /// <param name="value"></param>
-        public abstract void SetDtrEnable(bool value);
+        /// <param name="value">true=enabled</param>
+        public abstract void SetDtrEnabled(bool value);
         /// <summary>
-        /// 设置RTS使能
+        /// Set RTS enabled
         /// </summary>
-        /// <param name="value"></param>
-        public abstract void SetRtsEnable(bool value);
+        /// <param name="value">true=enabled</param>
+        public abstract void SetRtsEnabled(bool value);
         /// <summary>
-        /// 关闭USB
+        /// close the usb device
         /// </summary>
         public virtual void Close()
         {
             UsbDeviceConnection?.Close();
         }
         /// <summary>
-        /// 写
+        /// sync write
         /// </summary>
-        /// <param name="buffer">写入的数据</param>
-        /// <returns>写入成功返回写入数据长度，写入失败返回-1</returns>
+        /// <param name="buffer">write data</param>
+        /// <exception cref="BulkTransferException">write failed exception</exception>
         public virtual void Write(byte[] buffer)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -128,9 +138,9 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new BulkTransferException("Write failed", result, UsbEndpointWrite, buffer, 0, buffer.Length, WriteTimeout);
         }
         /// <summary>
-        /// 读
+        /// sync read
         /// </summary>
-        /// <returns>读成功返回读到的数据，读失败返回空</returns>
+        /// <returns>The read data is returned after the read succeeds. Null data is returned after the read fails</returns>
         public virtual byte[]? Read()
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -148,10 +158,11 @@ namespace UsbSerialForAndroid.Net.Drivers
             }
         }
         /// <summary>
-        /// 写（异步）
+        /// async write
         /// </summary>
-        /// <param name="buffer">写入的数据</param>
-        /// <returns>写入成功返回写入数据长度，写入失败返回-1</returns>
+        /// <param name="buffer">write data</param>
+        /// <returns></returns>
+        /// <exception cref="BulkTransferException">Write failed exception</exception>
         public virtual async Task WriteAsync(byte[] buffer)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -160,9 +171,9 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new BulkTransferException("Write failed", result, UsbEndpointWrite, buffer, 0, buffer.Length, WriteTimeout);
         }
         /// <summary>
-        /// 读（异步）
+        /// async read
         /// </summary>
-        /// <returns>读成功返回读到的数据，读失败返回空</returns>
+        /// <returns>The read data is returned after the read succeeds. Null data is returned after the read fails</returns>
         public virtual async Task<byte[]?> ReadAsync()
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -180,10 +191,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             }
         }
         /// <summary>
-        /// 获取当前USB设备的接口
+        /// get the interface of the current USB device
         /// </summary>
-        /// <param name="usbDevice">USB设备</param>
-        /// <returns>接口数组</returns>
+        /// <param name="usbDevice">USB device</param>
+        /// <returns>UsbInterface array</returns>
         public static UsbInterface[] GetUsbInterfaces(UsbDevice usbDevice)
         {
             var array = new UsbInterface[usbDevice.InterfaceCount];
@@ -194,9 +205,9 @@ namespace UsbSerialForAndroid.Net.Drivers
             return array;
         }
         /// <summary>
-        /// 测试连接
+        /// test connection
         /// </summary>
-        /// <returns></returns>
+        /// <returns>true=connected</returns>
         public bool TestConnection()
         {
             try

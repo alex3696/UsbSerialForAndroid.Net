@@ -23,8 +23,15 @@ namespace UsbSerialForAndroid.Net.Drivers
 
         public const int RequestTypeHostToDeviceIn = UsbConstants.UsbTypeVendor | (int)UsbAddressing.In;
         public const int RequestTypeHostToDeviceOut = UsbConstants.UsbTypeVendor | (int)UsbAddressing.Out;
-
         public QinHengSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
+        /// <summary>
+        /// Open the USB device
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
         public override void Open(int baudRate = DefaultBaudRate, byte dataBits = DefaultDataBits, StopBits stopBits = DefaultStopBits, Parity parity = DefaultParity)
         {
             UsbDeviceConnection = UsbManager.OpenDevice(UsbDevice);
@@ -61,6 +68,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             Initialize();
             SetParameter(baudRate, dataBits, stopBits, parity);
         }
+        /// <summary>
+        /// Initialize the device
+        /// </summary>
+        /// <exception cref="ControlTransferException"></exception>
         private void Initialize()
         {
             int request = 0x5f;
@@ -111,6 +122,15 @@ namespace UsbSerialForAndroid.Net.Drivers
             data = new int[] { -1 /* 0x9f, 0xff*/, -1/*0xec,0xee*/ };
             CheckState("init #10", request, value, data);
         }
+        /// <summary>
+        /// Check the state of the device
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="expected"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        /// <exception cref="Exception"></exception>
         private void CheckState(string msg, int request, int value, int[] expected)
         {
             byte[] buffer = new byte[expected.Length];
@@ -130,16 +150,35 @@ namespace UsbSerialForAndroid.Net.Drivers
                     throw new Exception($"Expected 0x{expected[i]:X} bytes, but get 0x{current:X} [ {msg} ]");
             }
         }
+        /// <summary>
+        /// Control transfer in
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         private int ControlIn(int request, int value, int index, byte[] buffer)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
             return UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDeviceIn, request, value, index, buffer, buffer.Length, ControlTimeout);
         }
+        /// <summary>
+        /// Control transfer out
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
         private int ControlOut(int request, int value, int index)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
             return UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDeviceOut, request, value, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the control lines
+        /// </summary>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetControlLines()
         {
             const int request = 0xA4;
@@ -149,6 +188,12 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (ret < 0)
                 throw new ControlTransferException("Failed to set control lines", ret, RequestTypeHostToDeviceOut, request, value, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the baud rate
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        /// <exception cref="Exception"></exception>
         private void SetBaudRate(int baudRate)
         {
             for (int i = 0; i < baud.Length / 3; i++)
@@ -175,6 +220,15 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             throw new Exception($"Baud rate {baudRate} currently not supported");
         }
+        /// <summary>
+        /// Set the parameters
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetParameter(int baudRate, byte dataBits, StopBits stopBits, Parity parity)
         {
             SetBaudRate(baudRate);
@@ -218,12 +272,20 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (ret < 0)
                 throw new ControlTransferException("Error setting control byte", ret, RequestTypeHostToDeviceOut, request, value, lcr, null, 0, ControlTimeout);
         }
-        public override void SetDtrEnable(bool value)
+        /// <summary>
+        /// Set DTR enabled
+        /// </summary>
+        /// <param name="value"></param>
+        public override void SetDtrEnabled(bool value)
         {
             DtrEnable = value;
             SetControlLines();
         }
-        public override void SetRtsEnable(bool value)
+        /// <summary>
+        /// Set RTS enabled
+        /// </summary>
+        /// <param name="value"></param>
+        public override void SetRtsEnabled(bool value)
         {
             RtsEnable = value;
             SetControlLines();

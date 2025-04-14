@@ -2,6 +2,9 @@
 
 namespace UsbSerialForAndroid.Net.Exceptions
 {
+    /// <summary>
+    /// Control transfer exception
+    /// </summary>
     public class ControlTransferException : Exception
     {
         public int RequestType { get; }
@@ -13,6 +16,18 @@ namespace UsbSerialForAndroid.Net.Exceptions
         public int Length { get; }
         public int Timeout { get; }
         public int Result { get; }
+        /// <summary>
+        /// Control transfer exception
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="result"></param>
+        /// <param name="requestType"></param>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="buffer"></param>
+        /// <param name="length"></param>
+        /// <param name="timeout"></param>
         public ControlTransferException(string message, int result, int requestType, int request, int value, int index, byte[]? buffer, int length, int timeout)
             : base(GetMessage(message, result, requestType, request, value, index, buffer, length, timeout))
         {
@@ -25,6 +40,19 @@ namespace UsbSerialForAndroid.Net.Exceptions
             Length = length;
             Timeout = timeout;
         }
+        /// <summary>
+        /// Control transfer exception
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="result"></param>
+        /// <param name="requestType"></param>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="length"></param>
+        /// <param name="timeout"></param>
         public ControlTransferException(string message, int result, int requestType, int request, int value, int index, byte[]? buffer, int offset, int length, int timeout)
             : base(GetMessage(message, result, requestType, request, value, index, buffer, offset, length, timeout))
         {

@@ -3,14 +3,30 @@ using System;
 
 namespace UsbSerialForAndroid.Net.Exceptions
 {
+    /// <summary>
+    /// Bulk transfer exception
+    /// </summary>
     public class BulkTransferException : Exception
     {
+        /// <summary>
+        /// Bulk transfer exception
+        /// </summary>
         public UsbEndpoint? Endpoint { get; }
         public byte[]? Buffer { get; }
         public int Offset { get; }
         public int Length { get; }
         public int Timeout { get; }
         public int Result { get; }
+        /// <summary>
+        /// Bulk transfer exception
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="result"></param>
+        /// <param name="endpoint"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="length"></param>
+        /// <param name="timeout"></param>
         public BulkTransferException(string message, int result, UsbEndpoint? endpoint, byte[]? buffer, int offset, int length, int timeout)
             : base(GetMessage(message, result, endpoint, buffer, offset, length, timeout))
         {

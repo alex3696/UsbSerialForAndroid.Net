@@ -47,6 +47,14 @@ namespace UsbSerialForAndroid.Net.Drivers
         public new bool DtrEnable => (controlLinesValue & ControlDtr) != 0;
         public new bool RtsEnable => (controlLinesValue & ControlRts) != 0;
         public ProlificSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
+        /// <summary>
+        /// Open the USB device
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
         public override void Open(int baudRate = DefaultBaudRate, byte dataBits = DefaultDataBits, StopBits stopBits = DefaultStopBits, Parity parity = DefaultParity)
         {
             UsbDeviceConnection = UsbManager.OpenDevice(UsbDevice);
@@ -120,6 +128,13 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             SetParameter(baudRate, dataBits, stopBits, parity);
         }
+        /// <summary>
+        /// Set parameter
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
         private void SetParameter(int baudRate, byte dataBits, StopBits stopBits, Parity parity)
         {
             var para = new byte[7];
@@ -146,6 +161,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             OutControlTransfer(CtrlOutReqtype, SetLineRequest, 0, 0, para);
             ResetDevice();
         }
+        /// <summary>
+        /// Test HXN status
+        /// </summary>
+        /// <returns></returns>
         private bool TestHxStatus()
         {
             try
@@ -158,10 +177,18 @@ namespace UsbSerialForAndroid.Net.Drivers
                 return false;
             }
         }
+        /// <summary>
+        /// Reset device
+        /// </summary>
         private void ResetDevice()
         {
             PurgeHwBuffers(true, true);
         }
+        /// <summary>
+        /// Purge hardware buffers
+        /// </summary>
+        /// <param name="purgeWriteBuffers"></param>
+        /// <param name="purgeReadBuffers"></param>
         private void PurgeHwBuffers(bool purgeWriteBuffers, bool purgeReadBuffers)
         {
             if (deviceType == DeviceType.DeviceTypeHXN)
@@ -180,6 +207,9 @@ namespace UsbSerialForAndroid.Net.Drivers
                     VendorOut(FlushTxRequest, 0, null);
             }
         }
+        /// <summary>
+        /// Perform black magic to reset the device
+        /// </summary>
         private void DoBlackMagic()
         {
             if (deviceType == DeviceType.DeviceTypeHXN) return;
@@ -196,6 +226,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             VendorOut(1, 0, null);
             VendorOut(2, (deviceType == DeviceType.DeviceType01) ? 0x24 : 0x44, null);
         }
+        /// <summary>
+        /// Set flow control
+        /// </summary>
+        /// <param name="flowControl"></param>
         public void SetFlowControl(FlowControl flowControl)
         {
             switch (flowControl)
@@ -223,21 +257,48 @@ namespace UsbSerialForAndroid.Net.Drivers
             }
             FlowControl = flowControl;
         }
+        /// <summary>
+        /// Set control lines
+        /// </summary>
+        /// <param name="value"></param>
         private void SetControlLines(int value)
         {
             OutControlTransfer(CtrlOutReqtype, SetControlRequest, value, 0, null);
             controlLinesValue = value;
         }
+        /// <summary>
+        /// Vendor in control transfer
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
         private byte[] VendorIn(int value, int index, int length)
         {
             int request = (deviceType == DeviceType.DeviceTypeHXN) ? VendorReadHxnRequest : VendorReadRequest;
             return InControlTransfer(VendorInRequestType, request, value, index, length);
         }
+        /// <summary>
+        /// Vendor out control transfer
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="data"></param>
         private void VendorOut(int value, int index, byte[]? data)
         {
             int request = (deviceType == DeviceType.DeviceTypeHXN) ? VendorWriteHxnRequest : VendorWriteRequest;
             OutControlTransfer(VendorOutRequestType, request, value, index, data);
         }
+        /// <summary>
+        /// In control transfer data
+        /// </summary>
+        /// <param name="requestType"></param>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
+        /// <exception cref="ControlTransferException"></exception>
         private byte[] InControlTransfer(int requestType, int request, int value, int index, int length)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -249,6 +310,15 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             return data;
         }
+        /// <summary>
+        /// Out control transfer data
+        /// </summary>
+        /// <param name="requestType"></param>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <param name="index"></param>
+        /// <param name="data"></param>
+        /// <exception cref="ControlTransferException"></exception>
         private void OutControlTransfer(int requestType, int request, int value, int index, byte[]? data)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -258,14 +328,22 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result != length)
                 throw new ControlTransferException($"OutControlTransfer failed", result, requestType, request, value, index, data, length, ControlTimeout);
         }
-        public override void SetRtsEnable(bool value)
+        /// <summary>
+        /// Set control lines
+        /// </summary>
+        /// <param name="value"></param>
+        public override void SetRtsEnabled(bool value)
         {
             int newControlLinesValue = value
                 ? (controlLinesValue | ControlRts)
                 : (controlLinesValue & ~ControlRts);
             SetControlLines(newControlLinesValue);
         }
-        public override void SetDtrEnable(bool value)
+        /// <summary>
+        /// Set DTR enabled
+        /// </summary>
+        /// <param name="value"></param>
+        public override void SetDtrEnabled(bool value)
         {
             int newControlLinesValue = value
                 ? (controlLinesValue | ControlDtr)

@@ -28,6 +28,14 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const int SetBaudRateRequest = 3;
         public const int SetDataRequest = 4;
         public FtdiSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
+        /// <summary>
+        /// Open the USB device
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
         public override void Open(int baudRate = DefaultBaudRate, byte dataBits = DefaultDataBits, StopBits stopBits = DefaultStopBits, Parity parity = DefaultParity)
         {
             UsbDeviceConnection = UsbManager.OpenDevice(UsbDevice);
@@ -60,6 +68,10 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             SetParameter(baudRate, dataBits, stopBits, parity);
         }
+        /// <summary>
+        /// Reset the USB device
+        /// </summary>
+        /// <exception cref="ControlTransferException"></exception>
         private void Reset()
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -69,6 +81,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result < 0)
                 throw new ControlTransferException("Reset failed", result, RequestTypeHostToDevice, RestRequest, ResetAll, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Initialize RTS and DTR
+        /// </summary>
+        /// <exception cref="ControlTransferException"></exception>
         private void InitRtsDtr()
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -79,6 +95,11 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result < 0)
                 throw new ControlTransferException("Init RTS,DTR failed", result, RequestTypeHostToDevice, ModemControlRequest, value, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the flow control
+        /// </summary>
+        /// <param name="flowControl"></param>
+        /// <exception cref="ControlTransferException"></exception>
         public void SetFlowControl(FlowControl flowControl)
         {
             int value = 0;
@@ -109,6 +130,12 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             FlowControl = flowControl;
         }
+        /// <summary>
+        /// Set the baud rate
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetBaudrate(int baudRate)
         {
             int divisor, subdivisor, effectiveBaudRate;
@@ -167,6 +194,15 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result < 0)
                 throw new ControlTransferException("Setting baudrate failed", result, RequestTypeHostToDevice, SetBaudRateRequest, value, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the parameters
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetParameter(int baudRate, byte dataBits, StopBits stopBits, Parity parity)
         {
             SetBaudrate(baudRate);
@@ -222,6 +258,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result < 0)
                 throw new ControlTransferException("Setting parameters failed", result, RequestTypeHostToDevice, SetDataRequest, config, index, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Read the data
+        /// </summary>
+        /// <returns></returns>
         public override byte[]? Read()
         {
             var buffer = base.Read();
@@ -233,6 +273,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             }
             return buffer;
         }
+        /// <summary>
+        /// Asynchronous read the data
+        /// </summary>
+        /// <returns></returns>
         public override async Task<byte[]?> ReadAsync()
         {
             var buffer = await base.ReadAsync();
@@ -244,7 +288,12 @@ namespace UsbSerialForAndroid.Net.Drivers
             }
             return buffer;
         }
-        public override void SetDtrEnable(bool dtrEnable)
+        /// <summary>
+        /// Set the DTR enabled
+        /// </summary>
+        /// <param name="dtrEnable"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        public override void SetDtrEnabled(bool dtrEnable)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 
@@ -256,7 +305,12 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             DtrEnable = dtrEnable;
         }
-        public override void SetRtsEnable(bool rtsEnable)
+        /// <summary>
+        /// Set the RTS enabled
+        /// </summary>
+        /// <param name="rtsEnable"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        public override void SetRtsEnabled(bool rtsEnable)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 

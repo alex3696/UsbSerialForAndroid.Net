@@ -27,6 +27,14 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const int ControlRtsEnable = 0x0202;
         public const int ControlRtsDisable = 0x0200;
         public SiliconLabsSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
+        /// <summary>
+        /// Open the USB device
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="Exception"></exception>
         public override void Open(int baudRate = DefaultBaudRate, byte dataBits = DefaultDataBits, StopBits stopBits = DefaultStopBits, Parity parity = DefaultParity)
         {
             UsbDeviceConnection = UsbManager.OpenDevice(UsbDevice);
@@ -55,18 +63,28 @@ namespace UsbSerialForAndroid.Net.Drivers
                 }
             }
 
-            SetUartEnable();
+            SetUartEnabled();
             SetConfigSingle(SilabserSetMhsRequestCode, McrAll | ControlDtrDisable | ControlRtsDisable);
             SetConfigSingle(SilabserSetBauddivRequestCode, BaudRateGenFreq / DefaultBaudRate);
             SetParameter(baudRate, dataBits, stopBits, parity);
         }
-        private void SetUartEnable()
+        /// <summary>
+        /// Set the UART enabled
+        /// </summary>
+        /// <exception cref="ControlTransferException"></exception>
+        private void SetUartEnabled()
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
             int ret = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SilabserIcfEnableRquestCode, UartEnable, 0, null, 0, ControlTimeout);
             if (ret != 0)
                 throw new ControlTransferException("Set uart enable failed", ret, RequestTypeHostToDevice, SilabserIcfEnableRquestCode, UartEnable, 0, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the configuration
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="value"></param>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetConfigSingle(int request, int value)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -74,6 +92,14 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (ret != 0)
                 throw new ControlTransferException("Set config single error", ret, RequestTypeHostToDevice, request, value, 0, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the parameters
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <param name="dataBits"></param>
+        /// <param name="stopBits"></param>
+        /// <param name="parity"></param>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetParameter(int baudRate, byte dataBits, StopBits stopBits, Parity parity)
         {
             SetBaudRate(baudRate);
@@ -123,6 +149,11 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (ret < 0)
                 throw new ControlTransferException("`DataBits` `Parity` `StopBits` set error", ret, RequestTypeHostToDevice, SilabserSetLineCtlRequestCode, configDataBits, 0, null, 0, ControlTimeout);
         }
+        /// <summary>
+        /// Set the baud rate
+        /// </summary>
+        /// <param name="baudRate"></param>
+        /// <exception cref="ControlTransferException"></exception>
         private void SetBaudRate(int baudRate)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
@@ -138,7 +169,12 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (ret < 0)
                 throw new ControlTransferException("Set baud rate error", ret, RequestTypeHostToDevice, SilabserSetBaudRate, 0, 0, data, data.Length, ControlTimeout);
         }
-        public override void SetDtrEnable(bool value)
+        /// <summary>
+        /// Set the DTR enabled
+        /// </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        public override void SetDtrEnabled(bool value)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 
@@ -149,7 +185,12 @@ namespace UsbSerialForAndroid.Net.Drivers
             if (result != 0)
                 throw new ControlTransferException("Set Dtr failed", result, RequestTypeHostToDevice, SilabserSetMhsRequestCode, inValue, index, null, 0, ControlTimeout);
         }
-        public override void SetRtsEnable(bool value)
+        /// <summary>
+        /// Set the RTS enabled
+        /// </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ControlTransferException"></exception>
+        public override void SetRtsEnabled(bool value)
         {
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 

@@ -6,12 +6,32 @@ using System;
 
 namespace UsbSerialForAndroid.Net.Receivers
 {
+    /// <summary>
+    /// USB broadcast receiver
+    /// </summary>
     internal class UsbBroadcastReceiver : BroadcastReceiver
     {
+        /// <summary>
+        /// USB device attached callback
+        /// </summary>
         public Action<UsbDevice>? UsbDeviceAttached;
+        /// <summary>
+        /// USB device detached callback
+        /// </summary>
         public Action<UsbDevice>? UsbDeviceDetached;
+        /// <summary>
+        /// Internal error callback
+        /// </summary>
         public Action<Exception>? ErrorCallback;
+        /// <summary>
+        /// Show toast message
+        /// </summary>
         public bool IsShowToast { get; set; } = true;
+        /// <summary>
+        /// USB broadcast receiver
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="intent"></param>
         public override void OnReceive(Context? context, Intent? intent)
         {
             try
