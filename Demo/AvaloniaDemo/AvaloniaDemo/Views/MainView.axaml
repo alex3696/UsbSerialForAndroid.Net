@@ -13,7 +13,7 @@
     x:DataType="vm:MainViewModel"
     mc:Ignorable="d">
 
-	<Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+	<Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" >
 
 		<Grid ColumnDefinitions="Auto,*,Auto">
 
