@@ -1,5 +1,6 @@
 ﻿using Android.Hardware.Usb;
 using System;
+using System.Buffers;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
@@ -259,34 +260,61 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new ControlTransferException("Setting parameters failed", result, RequestTypeHostToDevice, SetDataRequest, config, index, null, 0, ControlTimeout);
         }
         /// <summary>
+        /// <summary>
+        /// Process Modem Status
+        /// https://ftdichip.com/Support/Knowledgebase/index.html?ft_w32_getcommmodemstatus.htm
+        /// https://microsin.net/programming/pc/ftdi-d2xx-functions-api.html?ysclid=mhfr8ts7fi434528274
+        /// </summary>
+        /// <returns></returns>
+        private void ProcessStatus(Span<byte> status)
+        {
+            //First byte(0x02):
+            //      Clear To Send(CTS) = 0x10,
+            //      Data Set Ready(DSR) = 0x20,
+            //      Ring Indicator(RI) = 0x40,
+            //      Data Carrier Detect(DCD) = 0x80
+            //Second byte(0x60):
+            //      Overrun Error (OE) = 0x02,
+            //      Parity Error (PE) = 0x04,
+            //      Framing Error (FE) = 0x08,
+            //      Break Interrupt (BI) = 0x10.
+        }
+        /// <summary>
         /// Read the data
         /// </summary>
         /// <returns></returns>
         public override byte[]? Read()
         {
-            var buffer = base.Read();
-            if (buffer?.Length >= ReadHeaderLength)
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
+            try
             {
-                return buffer.AsSpan()
-                    .Slice(ReadHeaderLength, buffer.Length - ReadHeaderLength)
-                    .ToArray();
+                int result = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
+                if (1 < result)
+                {
+                    int statusCount = (result + 63) / 64;
+                    for (int i = 0; i < statusCount; i++)
+                    {
+                        ProcessStatus(buffer.AsSpan(i * 62, 2));
+                        buffer.AsSpan((i * 62) + 2).CopyTo(buffer.AsSpan(i * 62));
+                    }
+                    int retLen = result - (statusCount * 2);
+                    return buffer.AsSpan(0, retLen).ToArray();
+                }
             }
-            return buffer;
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+            return default;
         }
         /// <summary>
         /// Asynchronous read the data
         /// </summary>
         /// <returns></returns>
-        public override async Task<byte[]?> ReadAsync()
+        public override Task<byte[]?> ReadAsync()
         {
-            var buffer = await base.ReadAsync();
-            if (buffer?.Length >= ReadHeaderLength)
-            {
-                return buffer.AsSpan()
-                    .Slice(ReadHeaderLength, buffer.Length - ReadHeaderLength)
-                    .ToArray();
-            }
-            return buffer;
+            return Task.FromResult(Read());
         }
         /// <summary>
         /// Set the DTR enabled
