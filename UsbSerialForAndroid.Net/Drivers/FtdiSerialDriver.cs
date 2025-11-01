@@ -16,18 +16,23 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const int RequestTypeHostToDevice = UsbConstants.UsbTypeVendor | (int)UsbAddressing.Out;
         public const int ReadHeaderLength = 2; // contains MODEM_STATUS
 
-        public const int ModemControlRequest = 1;
+
         public const int ModemControlDtrEnable = 0x0101;
         public const int ModemControlDtrDisable = 0x0100;
         public const int ModemControlRtsEnable = 0x0202;
         public const int ModemControlRtsDisable = 0x0200;
 
-        public const int RestRequest = 0;
         public const int ResetAll = 0;
 
+        public const int ResetRequest = 0;
+        public const int ModemControlRequest = 1;
         public const int SetFlowControlRequest = 2;
         public const int SetBaudRateRequest = 3;
         public const int SetDataRequest = 4;
+        public const int GetModemStatusRequest = 5; // GET_MODEM_STATUS_REQUEST
+        public const int SetLatencyTimerRequest = 9; // SET_LATENCY_TIMER_REQUEST
+        public const int GetLatencyTimerRequest = 10; // GET_LATENCY_TIMER_REQUEST
+
         public FtdiSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
         /// <summary>
         /// Open the USB device
@@ -68,6 +73,7 @@ namespace UsbSerialForAndroid.Net.Drivers
                 || UsbDevice.InterfaceCount > 1;// FT2232C
 
             SetParameter(baudRate, dataBits, stopBits, parity);
+            SetLatency(1);
         }
         /// <summary>
         /// Reset the USB device
@@ -78,9 +84,9 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 
             int index = UsbInterfaceIndex + 1;
-            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, RestRequest, ResetAll, index, null, 0, ControlTimeout);
+            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, ResetRequest, ResetAll, index, null, 0, ControlTimeout);
             if (result < 0)
-                throw new ControlTransferException("Reset failed", result, RequestTypeHostToDevice, RestRequest, ResetAll, index, null, 0, ControlTimeout);
+                throw new ControlTransferException("Reset failed", result, RequestTypeHostToDevice, ResetRequest, ResetAll, index, null, 0, ControlTimeout);
         }
         /// <summary>
         /// Initialize RTS and DTR
@@ -260,6 +266,23 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new ControlTransferException("Setting parameters failed", result, RequestTypeHostToDevice, SetDataRequest, config, index, null, 0, ControlTimeout);
         }
         /// <summary>
+        /// Set the Latency - miliseconds
+        /// https://ftdichip.com/Support/Knowledgebase/index.html?an232b_04smalldataend.htm
+        /// </summary>
+        /// <param name="latency"></param>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="ControlTransferException"></exception>
+        public void SetLatency(byte latency)
+        {
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            int config = latency;
+            int index = UsbInterfaceIndex + 1;
+            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, 
+                buffer: null, length: 0, timeout:ControlTimeout);
+            if (result < 0)
+                throw new ControlTransferException("Set Latency Timer failed", result, RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, null, 0, ControlTimeout);
+        }
+
         /// <summary>
         /// Process Modem Status
         /// https://ftdichip.com/Support/Knowledgebase/index.html?ft_w32_getcommmodemstatus.htm
