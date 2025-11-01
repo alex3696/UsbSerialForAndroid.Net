@@ -267,7 +267,7 @@ namespace UsbSerialForAndroid.Net.Drivers
         }
         /// <summary>
         /// Set the Latency - miliseconds
-        /// https://ftdichip.com/Support/Knowledgebase/index.html?an232b_04smalldataend.htm
+        /// https://ftdichip.com/Support/Knowledgebase/index.html?an232beffectbuffsizeandlatency.htm
         /// </summary>
         /// <param name="latency"></param>
         /// <exception cref="Exception"></exception>
