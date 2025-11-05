@@ -10,5 +10,8 @@
         Prolific = 0x067B,
         QinHeng = 0x1A86,
         SiliconLabs = 0x10C4,
+        Arduino = 0x2341,
+        GigaDevice = 0x28E9,
+        Atmel = 0x03EB,
     }
 }
