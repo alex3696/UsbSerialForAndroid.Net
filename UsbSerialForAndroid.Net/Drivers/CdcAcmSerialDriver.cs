@@ -3,16 +3,15 @@ using Java.Nio;
 using System;
 using System.Buffers;
 using System.IO;
-using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
 using UsbSerialForAndroid.Net.Extensions;
+using static Android.Media.Audiofx.DynamicsProcessing;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
-    [SupportedOSPlatform("android26.0")]
     public class CdcAcmSerialDriver : UsbDriverBase
     {
         public const int UsbSubclassAcm = 2;
@@ -283,10 +282,10 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(_readBuf);
             ArgumentNullException.ThrowIfNull(_usbReadRequest);
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            if (!_usbReadRequest.Queue(_readBuf))
+            if (!_usbReadRequest.QueueReq(_readBuf))
                 throw new IOException("Error queueing request.");
             using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
-            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(ControlTimeout);
+            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbReadRequest, ControlTimeout);
             if (!ReferenceEquals(response, _usbReadRequest))
                 throw new IOException("Wrong response");
             int nread = _readBuf.Position();
@@ -316,9 +315,9 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(_readBuf);
             ArgumentNullException.ThrowIfNull(_usbReadRequest);
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            if (!_usbReadRequest.Queue(_readBuf))
+            if (!_usbReadRequest.QueueReq(_readBuf))
                 throw new IOException("Error queueing request.");
-            UsbRequest? response = UsbDeviceConnection.RequestWait(ControlTimeout);
+            UsbRequest? response = UsbDeviceConnection.RequestWait(_usbReadRequest, ControlTimeout);
             if (!ReferenceEquals(response, _usbReadRequest))
                 throw new IOException("Wrong response");
             int nread = _readBuf.Position();
