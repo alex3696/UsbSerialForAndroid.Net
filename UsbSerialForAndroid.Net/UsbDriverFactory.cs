@@ -30,6 +30,9 @@ namespace UsbSerialForAndroid.Net
                 (int)VendorIds.Prolific => new ProlificSerialDriver(usbDevice),
                 (int)VendorIds.QinHeng => new QinHengSerialDriver(usbDevice),
                 (int)VendorIds.SiliconLabs => new SiliconLabsSerialDriver(usbDevice),
+                (int)VendorIds.Arduino => new CdcAcmSerialDriver(usbDevice),
+                (int)VendorIds.Atmel => new CdcAcmSerialDriver(usbDevice),
+                (int)VendorIds.GigaDevice => new CdcAcmSerialDriver(usbDevice),
                 _ => throw new NotSupportedDriverException(usbDevice)
             };
         }
@@ -119,6 +122,10 @@ namespace UsbSerialForAndroid.Net
                         }
                         break;
                     }
+                case VendorIds.Arduino:
+                case VendorIds.Atmel:
+                case VendorIds.GigaDevice:
+                        return true;
             }
             return false;
         }
