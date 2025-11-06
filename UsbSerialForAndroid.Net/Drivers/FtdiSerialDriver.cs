@@ -314,6 +314,8 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(_usbReadRequest);
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
             _readBuf.Position(0);
+            // if limit less then 64 _readBuf.Position always 0 // TODO MOVE BUFFER
+            //_readBuf.Limit((count / 62 * 2) + 2 + count); // 65 = 2 + 62 + 2 + 3 = 69
             if (!_usbReadRequest.QueueReq(_readBuf))
                 throw new IOException("Error queueing request.");
             using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
@@ -322,28 +324,30 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new IOException("Wrong response");
             int nread = _readBuf.Position();
             if (nread > 0)
-                return FilterBuf(_readBuf.ToByteArray().AsSpan(0, nread), 
-                    rbuf.AsSpan(offset, rbuf.Length - offset));
+                return FilterBuf(_readBuf.ToByteArray().AsSpan(0, int.Min(nread, count)),
+                    rbuf.AsSpan(offset, count));
             return 0;
         }
-        private int FilterBuf(Span<byte> src)
+        static private int FilterBuf(Span<byte> src)
         {
-            if (ReadHeaderLength >= src.Length)
-                return 0;
             int statusCount = (src.Length + 63) / 64;
             for (int i = 0; i < statusCount; i++)
                 src.Slice((i * 62) + 2).CopyTo(src.Slice(i * 62));
             int retLen = src.Length - (statusCount * 2);
             return retLen;
         }
-        private int FilterBuf(Span<byte> src, Span<byte> dst)
+        static private int FilterBuf(Span<byte> src, Span<byte> dst)
         {
-            if (ReadHeaderLength >= src.Length)
-                return 0;
-            int statusCount = (src.Length + 63) / 64;
-            for (int i = 0; i < statusCount; i++)
-                src.Slice((i * 64) + 2).CopyTo(dst.Slice(i * 62));
-            int retLen = src.Length - (statusCount * 2);
+            int curr;
+            int retLen = 0;
+            while (2 < src.Length)
+            {
+                curr = int.Min(64, src.Length);
+                src.Slice(2, curr - 2).CopyTo(dst);
+                dst = dst.Slice(curr - 2);
+                src = src.Slice(curr);
+                retLen += curr - 2;
+            }
             return retLen;
         }
         /// <summary>
