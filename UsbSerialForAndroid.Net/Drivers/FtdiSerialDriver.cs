@@ -298,8 +298,8 @@ namespace UsbSerialForAndroid.Net.Drivers
             try
             {
                 int len = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
-                len = FilterBuf(buffer.AsSpan(len), buffer.AsSpan(len));
-                return buffer.AsSpan(len).ToArray();
+                len = FilterBuf(buffer.AsSpan(0, len), buffer.AsSpan(0, len));
+                return buffer.AsSpan(0, len).ToArray();
             }
             finally
             {
