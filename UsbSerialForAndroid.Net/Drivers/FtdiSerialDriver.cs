@@ -296,23 +296,14 @@ namespace UsbSerialForAndroid.Net.Drivers
             var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
             try
             {
-                int result = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
-                if (1 < result)
-                {
-                    int statusCount = (result + 63) / 64;
-                    for (int i = 0; i < statusCount; i++)
-                    {
-                        buffer.AsSpan((i * 62) + 2).CopyTo(buffer.AsSpan(i * 62));
-                    }
-                    int retLen = result - (statusCount * 2);
-                    return buffer.AsSpan(0, retLen).ToArray();
-                }
+                int len = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
+                len = FilterBuf(buffer.AsSpan(len), buffer.AsSpan(len));
+                return buffer.AsSpan(len).ToArray();
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-            return default;
         }
         /// <summary>
         /// Asynchronous read the data
@@ -321,6 +312,16 @@ namespace UsbSerialForAndroid.Net.Drivers
         public override Task<byte[]?> ReadAsync()
         {
             return Task.FromResult(Read());
+        }
+        private int FilterBuf(Span<byte> src, Span<byte> dst)
+        {
+            if (ReadHeaderLength >= src.Length)
+                return 0;
+            int statusCount = (src.Length + 63) / 64;
+            for (int i = 0; i < statusCount; i++)
+                src.Slice((i * 62) + 2).CopyTo(dst.Slice(i * 62));
+            int retLen = src.Length - (statusCount * 2);
+            return retLen;
         }
         /// <summary>
         /// Set the DTR enabled
