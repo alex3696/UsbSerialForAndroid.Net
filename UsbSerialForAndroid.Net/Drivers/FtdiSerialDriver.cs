@@ -1,10 +1,12 @@
 ﻿using Android.Hardware.Usb;
 using System;
 using System.Buffers;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
+using UsbSerialForAndroid.Net.Extensions;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
@@ -308,16 +310,19 @@ namespace UsbSerialForAndroid.Net.Drivers
         }
         public override async Task<int> ReadAsync(byte[] rbuf, int offset, int count, CancellationToken ct = default)
         {
-            var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
-            try
-            {
-                int len = await base.ReadAsync(buffer, 0, buffer.Length, ct);
-                return FilterBuf(buffer.AsSpan(len), rbuf.AsSpan(offset, count));
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
+            ArgumentNullException.ThrowIfNull(_readBuf);
+            ArgumentNullException.ThrowIfNull(_usbReadRequest);
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            if (!_usbReadRequest.QueueReq(_readBuf))
+                throw new IOException("Error queueing request.");
+            using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
+            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbReadRequest, ControlTimeout);
+            if (!ReferenceEquals(response, _usbReadRequest))
+                throw new IOException("Wrong response");
+            int nread = _readBuf.Position();
+            if (nread > 0)
+                return FilterBuf(_readBuf.ToByteArray().AsSpan(0, nread), rbuf.AsSpan(offset, count));
+            return 0;
         }
         private int FilterBuf(Span<byte> src)
         {
@@ -326,6 +331,16 @@ namespace UsbSerialForAndroid.Net.Drivers
             int statusCount = (src.Length + 63) / 64;
             for (int i = 0; i < statusCount; i++)
                 src.Slice((i * 62) + 2).CopyTo(src.Slice(i * 62));
+            int retLen = src.Length - (statusCount * 2);
+            return retLen;
+        }
+        private int FilterBuf(Span<byte> src, Span<byte> dst)
+        {
+            if (ReadHeaderLength >= src.Length)
+                return 0;
+            int statusCount = (src.Length + 63) / 64;
+            for (int i = 0; i < statusCount; i++)
+                src.Slice((i * 64) + 2, 62).CopyTo(src.Slice(i * 62));
             int retLen = src.Length - (statusCount * 2);
             return retLen;
         }
