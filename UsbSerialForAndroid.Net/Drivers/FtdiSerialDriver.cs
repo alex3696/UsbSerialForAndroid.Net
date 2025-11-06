@@ -74,6 +74,7 @@ namespace UsbSerialForAndroid.Net.Drivers
 
             SetParameter(baudRate, dataBits, stopBits, parity);
             SetLatency(1);
+            InitAsyncBuffers();
         }
         /// <summary>
         /// Reset the USB device

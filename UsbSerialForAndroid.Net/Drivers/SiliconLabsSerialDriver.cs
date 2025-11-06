@@ -67,6 +67,7 @@ namespace UsbSerialForAndroid.Net.Drivers
             SetConfigSingle(SilabserSetMhsRequestCode, McrAll | ControlDtrDisable | ControlRtsDisable);
             SetConfigSingle(SilabserSetBauddivRequestCode, BaudRateGenFreq / DefaultBaudRate);
             SetParameter(baudRate, dataBits, stopBits, parity);
+            InitAsyncBuffers();
         }
         /// <summary>
         /// Set the UART enabled

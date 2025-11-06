@@ -127,6 +127,12 @@ namespace UsbSerialForAndroid.Net.Drivers
             SetFlowControl(FlowControl);
 
             SetParameter(baudRate, dataBits, stopBits, parity);
+            InitAsyncBuffers();
+        }
+        public override void Close()
+        {
+            UsbEndpointInterupt?.Dispose(); UsbEndpointInterupt = null;
+            base.Close();
         }
         /// <summary>
         /// Set parameter
