@@ -313,6 +313,7 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(_readBuf);
             ArgumentNullException.ThrowIfNull(_usbReadRequest);
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            _readBuf.Position(0);
             if (!_usbReadRequest.QueueReq(_readBuf))
                 throw new IOException("Error queueing request.");
             using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
@@ -321,7 +322,8 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new IOException("Wrong response");
             int nread = _readBuf.Position();
             if (nread > 0)
-                return FilterBuf(_readBuf.ToByteArray().AsSpan(0, nread), rbuf.AsSpan(offset, count));
+                return FilterBuf(_readBuf.ToByteArray().AsSpan(0, nread), 
+                    rbuf.AsSpan(offset, rbuf.Length - offset));
             return 0;
         }
         private int FilterBuf(Span<byte> src)
@@ -340,7 +342,7 @@ namespace UsbSerialForAndroid.Net.Drivers
                 return 0;
             int statusCount = (src.Length + 63) / 64;
             for (int i = 0; i < statusCount; i++)
-                src.Slice((i * 64) + 2, 62).CopyTo(src.Slice(i * 62));
+                src.Slice((i * 64) + 2).CopyTo(dst.Slice(i * 62));
             int retLen = src.Length - (statusCount * 2);
             return retLen;
         }
