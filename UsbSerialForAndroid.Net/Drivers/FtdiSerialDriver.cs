@@ -67,6 +67,7 @@ namespace UsbSerialForAndroid.Net.Drivers
                 || UsbDevice.InterfaceCount > 1;// FT2232C
 
             SetParameter(baudRate, dataBits, stopBits, parity);
+            InitAsyncBuffers();
         }
         /// <summary>
         /// Reset the USB device

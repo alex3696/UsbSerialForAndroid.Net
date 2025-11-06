@@ -1,11 +1,15 @@
 ﻿using Android.App;
 using Android.Content;
 using Android.Hardware.Usb;
+using Java.Nio;
 using System;
 using System.Buffers;
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
+using UsbSerialForAndroid.Net.Extensions;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
@@ -123,7 +127,18 @@ namespace UsbSerialForAndroid.Net.Drivers
         /// </summary>
         public virtual void Close()
         {
-            UsbDeviceConnection?.Close();
+            _usbReadRequest?.Close();
+            _usbReadRequest = null;
+            _usbWriteRequest?.Close();
+            _usbWriteRequest = null;
+            _readBuf?.Dispose();
+            _readBuf = null;
+
+            UsbEndpointRead?.Dispose(); UsbEndpointRead = null;
+            UsbEndpointWrite?.Dispose(); UsbEndpointWrite = null;
+            UsbDeviceConnection?.ReleaseInterface(UsbInterface);
+            UsbInterface?.Dispose(); UsbInterface = null;
+            UsbDeviceConnection?.Close(); UsbDeviceConnection = null;
         }
         /// <summary>
         /// sync write
@@ -163,12 +178,9 @@ namespace UsbSerialForAndroid.Net.Drivers
         /// <param name="buffer">write data</param>
         /// <returns></returns>
         /// <exception cref="BulkTransferException">Write failed exception</exception>
-        public virtual async Task WriteAsync(byte[] buffer)
+        public virtual Task WriteAsync(byte[] buffer)
         {
-            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            int result = await UsbDeviceConnection.BulkTransferAsync(UsbEndpointWrite, buffer, 0, buffer.Length, WriteTimeout);
-            if (result < 0)
-                throw new BulkTransferException("Write failed", result, UsbEndpointWrite, buffer, 0, buffer.Length, WriteTimeout);
+            return WriteAsync(buffer, 0, buffer.Length);
         }
         /// <summary>
         /// async read
@@ -176,18 +188,15 @@ namespace UsbSerialForAndroid.Net.Drivers
         /// <returns>The read data is returned after the read succeeds. Null data is returned after the read fails</returns>
         public virtual async Task<byte[]?> ReadAsync()
         {
-            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
+            var dest = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
             try
             {
-                int result = await UsbDeviceConnection.BulkTransferAsync(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
-                return result >= 0
-                    ? buffer.AsSpan().Slice(0, result).ToArray()
-                    : default;
+                int len = await ReadAsync(dest, 0, dest.Length);
+                return dest.AsSpan(0, len).ToArray();
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(buffer);
+                ArrayPool<byte>.Shared.Return(dest);
             }
         }
         /// <summary>
@@ -223,5 +232,54 @@ namespace UsbSerialForAndroid.Net.Drivers
                 return false;
             }
         }
+
+        protected void InitAsyncBuffers()
+        {
+            _usbReadRequest = new();
+            _usbReadRequest.Initialize(UsbDeviceConnection, UsbEndpointRead);
+            _readBuf = ByteBuffer.Allocate(DefaultBufferLength);
+            _usbWriteRequest = new();
+            _usbWriteRequest.Initialize(UsbDeviceConnection, UsbEndpointWrite);
+        }
+        // we need work around with _readBuf
+        // https://github.com/alex3696/UsbSerialForAndroid/blob/main/UsbSerialForAndroid/driver/CdcAcmSerialDriver.cs 300
+        protected UsbRequest? _usbReadRequest;
+        protected ByteBuffer? _readBuf;
+        public virtual async Task<int> ReadAsync(byte[] rbuf, int offset, int count, CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(_readBuf);
+            ArgumentNullException.ThrowIfNull(_usbReadRequest);
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            var buf = _readBuf;
+            if (!_usbReadRequest.QueueReq(buf))
+                throw new IOException("Error queueing request.");
+            using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
+            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbReadRequest, ControlTimeout);
+            if (!ReferenceEquals(response, _usbReadRequest))
+                throw new IOException("Wrong response");
+            int nread = buf.Position();
+            if (nread > 0)
+            {
+                _readBuf.ToByteArray().AsSpan(0, nread).CopyTo(rbuf);
+                return nread;
+            }
+            return 0;
+        }
+        protected UsbRequest? _usbWriteRequest;
+        public virtual async Task<int> WriteAsync(byte[] wbuf, int offset, int count, CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(_usbWriteRequest);
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            using var buf = ByteBuffer.Wrap(wbuf, offset, count);
+            if (!_usbWriteRequest.QueueReq(buf))
+                throw new IOException("Error queueing request.");
+            using var crReg = ct.Register(() => _usbWriteRequest?.Cancel());
+            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbWriteRequest, ControlTimeout);
+            if (!ReferenceEquals(response, _usbWriteRequest))
+                throw new IOException("Wrong response");
+            int nwrite = buf.Position();
+            return nwrite;
+        }
+
     }
 }
