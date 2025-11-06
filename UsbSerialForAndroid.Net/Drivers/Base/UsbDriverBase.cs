@@ -250,17 +250,18 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(_readBuf);
             ArgumentNullException.ThrowIfNull(_usbReadRequest);
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            var buf = _readBuf;
-            if (!_usbReadRequest.QueueReq(buf))
+            _readBuf.Position(0);
+            if (!_usbReadRequest.QueueReq(_readBuf))
                 throw new IOException("Error queueing request.");
             using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
             UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbReadRequest, ControlTimeout);
             if (!ReferenceEquals(response, _usbReadRequest))
                 throw new IOException("Wrong response");
-            int nread = buf.Position();
+            int nread = _readBuf.Position();
             if (nread > 0)
             {
-                _readBuf.ToByteArray().AsSpan(0, nread).CopyTo(rbuf);
+                _readBuf.ToByteArray().AsSpan(0, nread)
+                    .CopyTo(rbuf.AsSpan(offset, count));
                 return nread;
             }
             return 0;
