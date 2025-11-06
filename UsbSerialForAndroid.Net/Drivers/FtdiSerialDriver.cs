@@ -283,25 +283,8 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new ControlTransferException("Set Latency Timer failed", result, RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, null, 0, ControlTimeout);
         }
 
-        /// <summary>
-        /// Process Modem Status
         /// https://ftdichip.com/Support/Knowledgebase/index.html?ft_w32_getcommmodemstatus.htm
         /// https://microsin.net/programming/pc/ftdi-d2xx-functions-api.html?ysclid=mhfr8ts7fi434528274
-        /// </summary>
-        /// <returns></returns>
-        private void ProcessStatus(Span<byte> status)
-        {
-            //First byte(0x02):
-            //      Clear To Send(CTS) = 0x10,
-            //      Data Set Ready(DSR) = 0x20,
-            //      Ring Indicator(RI) = 0x40,
-            //      Data Carrier Detect(DCD) = 0x80
-            //Second byte(0x60):
-            //      Overrun Error (OE) = 0x02,
-            //      Parity Error (PE) = 0x04,
-            //      Framing Error (FE) = 0x08,
-            //      Break Interrupt (BI) = 0x10.
-        }
         /// <summary>
         /// Read the data
         /// </summary>
@@ -318,7 +301,6 @@ namespace UsbSerialForAndroid.Net.Drivers
                     int statusCount = (result + 63) / 64;
                     for (int i = 0; i < statusCount; i++)
                     {
-                        ProcessStatus(buffer.AsSpan(i * 62, 2));
                         buffer.AsSpan((i * 62) + 2).CopyTo(buffer.AsSpan(i * 62));
                     }
                     int retLen = result - (statusCount * 2);
