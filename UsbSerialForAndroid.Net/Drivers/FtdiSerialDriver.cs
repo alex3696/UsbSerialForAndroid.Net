@@ -1,6 +1,7 @@
 ﻿using Android.Hardware.Usb;
 using System;
 using System.Buffers;
+using System.Threading;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
@@ -278,8 +279,8 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
             int config = latency;
             int index = UsbInterfaceIndex + 1;
-            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, 
-                buffer: null, length: 0, timeout:ControlTimeout);
+            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SetLatencyTimerRequest, config, index,
+                buffer: null, length: 0, timeout: ControlTimeout);
             if (result < 0)
                 throw new ControlTransferException("Set Latency Timer failed", result, RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, null, 0, ControlTimeout);
         }
@@ -305,13 +306,18 @@ namespace UsbSerialForAndroid.Net.Drivers
                 ArrayPool<byte>.Shared.Return(buffer);
             }
         }
-        /// <summary>
-        /// Asynchronous read the data
-        /// </summary>
-        /// <returns></returns>
-        public override Task<byte[]?> ReadAsync()
+        public override async Task<int> ReadAsync(byte[] rbuf, int offset, int count, CancellationToken ct = default)
         {
-            return Task.FromResult(Read());
+            var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
+            try
+            {
+                int len = await base.ReadAsync(buffer, 0, buffer.Length, ct);
+                return FilterBuf(buffer.AsSpan(len), rbuf.AsSpan(offset, count));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
         private int FilterBuf(Span<byte> src, Span<byte> dst)
         {

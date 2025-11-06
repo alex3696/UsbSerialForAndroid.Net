@@ -1,14 +1,10 @@
 ﻿using Android.Hardware.Usb;
-using Java.Nio;
 using System;
 using System.Buffers;
-using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
 using UsbSerialForAndroid.Net.Extensions;
-using static Android.Media.Audiofx.DynamicsProcessing;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
@@ -37,9 +33,7 @@ namespace UsbSerialForAndroid.Net.Drivers
                 OpenInterface();
             }
             SetParameters(baudRate, dataBits, stopBits, parity);
-            _usbReadRequest = new();
-            _usbReadRequest.Initialize(UsbDeviceConnection, UsbEndpointRead);
-            _readBuf = ByteBuffer.Allocate(DefaultBufferLength);
+            InitAsyncBuffers();
         }
         private void OpenSingleInterface()
         {
@@ -246,13 +240,10 @@ namespace UsbSerialForAndroid.Net.Drivers
         }
         public override void Close()
         {
-            _usbReadRequest?.Close();
-            _usbReadRequest = null;
+            controlEndpoint?.Dispose(); controlEndpoint = null;
             UsbDeviceConnection?.ReleaseInterface(controlInterface);
-            UsbDeviceConnection?.ReleaseInterface(UsbInterface);
-            UsbDeviceConnection?.Close();
-            _readBuf?.Dispose();
-            _readBuf = null;
+            controlInterface?.Dispose(); controlInterface = null;
+            base.Close();
         }
         public override void SetDtrEnabled(bool value)
         {
@@ -272,58 +263,6 @@ namespace UsbSerialForAndroid.Net.Drivers
             int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)UsbRtAcm, SetControlLineState, value, controlIndex, null, 0, ControlTimeout);
             if (result != 0)
                 throw new ControlTransferException("Set dtr rts failed", result, UsbRtAcm, SetControlLineState, value, controlIndex, null, 0, ControlTimeout);
-        }
-
-
-        UsbRequest? _usbReadRequest;
-        ByteBuffer? _readBuf;
-        public async Task<int> ReadAsync(Memory<byte> mem, CancellationToken ct = default)
-        {
-            ArgumentNullException.ThrowIfNull(_readBuf);
-            ArgumentNullException.ThrowIfNull(_usbReadRequest);
-            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            if (!_usbReadRequest.QueueReq(_readBuf))
-                throw new IOException("Error queueing request.");
-            using var crReg = ct.Register(() => _usbReadRequest?.Cancel());
-            UsbRequest? response = await UsbDeviceConnection.RequestWaitAsync(_usbReadRequest, ControlTimeout);
-            if (!ReferenceEquals(response, _usbReadRequest))
-                throw new IOException("Wrong response");
-            int nread = _readBuf.Position();
-            if (nread > 0)
-            {
-                _readBuf.ToByteArray().AsMemory(0, nread).CopyTo(mem);
-                return nread;
-            }
-            return 0;
-        }
-        public override async Task<byte[]?> ReadAsync()
-        {
-            var dest = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
-            try
-            {
-                var mem = dest.AsMemory();
-                int len = await ReadAsync(mem);
-                return mem.Slice(0, len).ToArray();
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(dest);
-            }
-        }
-        public override byte[]? Read()
-        {
-            ArgumentNullException.ThrowIfNull(_readBuf);
-            ArgumentNullException.ThrowIfNull(_usbReadRequest);
-            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
-            if (!_usbReadRequest.QueueReq(_readBuf))
-                throw new IOException("Error queueing request.");
-            UsbRequest? response = UsbDeviceConnection.RequestWait(_usbReadRequest, ControlTimeout);
-            if (!ReferenceEquals(response, _usbReadRequest))
-                throw new IOException("Wrong response");
-            int nread = _readBuf.Position();
-            if (nread > 0)
-                return _readBuf.ToByteArray().AsMemory(0, nread).ToArray();
-            return default;
         }
     }
 }
