@@ -260,7 +260,7 @@ namespace UsbSerialForAndroid.Net.Drivers
             int nread = _readBuf.Position();
             if (nread > 0)
             {
-                _readBuf.ToByteArray().AsSpan(0, nread)
+                _readBuf.ToByteArray().AsSpan(0, int.Min(nread, count))
                     .CopyTo(rbuf.AsSpan(offset, count));
                 return nread;
             }
