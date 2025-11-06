@@ -298,7 +298,7 @@ namespace UsbSerialForAndroid.Net.Drivers
             try
             {
                 int len = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
-                len = FilterBuf(buffer.AsSpan(0, len), buffer.AsSpan(0, len));
+                len = FilterBuf(buffer.AsSpan(0, len));
                 return buffer.AsSpan(0, len).ToArray();
             }
             finally
@@ -319,13 +319,13 @@ namespace UsbSerialForAndroid.Net.Drivers
                 ArrayPool<byte>.Shared.Return(buffer);
             }
         }
-        private int FilterBuf(Span<byte> src, Span<byte> dst)
+        private int FilterBuf(Span<byte> src)
         {
             if (ReadHeaderLength >= src.Length)
                 return 0;
             int statusCount = (src.Length + 63) / 64;
             for (int i = 0; i < statusCount; i++)
-                src.Slice((i * 62) + 2).CopyTo(dst.Slice(i * 62));
+                src.Slice((i * 62) + 2).CopyTo(src.Slice(i * 62));
             int retLen = src.Length - (statusCount * 2);
             return retLen;
         }
