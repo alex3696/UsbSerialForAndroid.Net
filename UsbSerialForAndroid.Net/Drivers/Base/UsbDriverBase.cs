@@ -248,6 +248,8 @@ namespace UsbSerialForAndroid.Net.Drivers
         protected UsbRequest? _usbReadRequest;
         protected ByteBuffer? _readBuf;
         protected MemoryQueue? _rsBuf;
+        public FilterDataFn? FilterData;
+        public delegate Span<byte> FilterDataFn(Span<byte> src);
 
         public virtual async Task<int> ReadAsync(byte[] dstBuf, int offset, int count, CancellationToken ct = default)
         {
@@ -288,6 +290,11 @@ namespace UsbSerialForAndroid.Net.Drivers
                 if (0 < nread)
                 {
                     var data = buf.ToByteArray().AsSpan(0, nread);
+                    if (null != FilterData)
+                    {
+                        data = FilterData(data);
+                        nread = data.Length;
+                    }
                     if (nread > count)
                     {
                         _rsBuf.Write(data.Slice(count));//copy the rest to the buffer
