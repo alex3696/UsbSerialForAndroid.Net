@@ -289,19 +289,20 @@ namespace UsbSerialForAndroid.Net.Drivers
                 _emptyBuffers.Enqueue(new NetDirectByteBuffer(readBufLen));
 
             _readerExit = new();
-            _filterTask = Task.Run(() => ProcessFilterAsync(_readerExit.Token));
+            if (null != FilterData)
+                _filterTask = Task.Run(() => ProcessFilterAsync(_readerExit.Token));
             _readTask = Task.Run(() => InternalUsbReadAsync(_readerExit.Token));
             _dispatchTask = Task.Run(() => UsbDispatchAsync(_readerExit.Token));
         }
         protected virtual async Task ProcessFilterAsync(CancellationToken ct = default)
         {
-            ArgumentNullException.ThrowIfNull(_fillBuffers);
-            ArgumentNullException.ThrowIfNull(_filterBufers);
-            ArgumentNullException.ThrowIfNull(_emptyBuffers);
-            ArgumentNullException.ThrowIfNull(FilterData);
             NetDirectByteBuffer? buf = null;
             try
             {
+                ArgumentNullException.ThrowIfNull(_fillBuffers);
+                ArgumentNullException.ThrowIfNull(_filterBufers);
+                ArgumentNullException.ThrowIfNull(_emptyBuffers);
+                ArgumentNullException.ThrowIfNull(FilterData);
                 while (!ct.IsCancellationRequested)
                 {
                     if (_filterBufers.TryDequeue(out buf))
