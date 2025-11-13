@@ -1,12 +1,8 @@
 ﻿using Android.Hardware.Usb;
 using System;
 using System.Buffers;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
-using UsbSerialForAndroid.Net.Extensions;
 
 namespace UsbSerialForAndroid.Net.Drivers
 {
@@ -301,20 +297,14 @@ namespace UsbSerialForAndroid.Net.Drivers
             try
             {
                 int len = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
-                return FilterBuf(buffer.AsSpan(0, len)).ToArray();
+                var data = buffer.AsSpan(0, len);
+                len = FilterBuf(data, data);
+                return buffer.AsSpan(0, len).ToArray();
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-        }
-        static private Span<byte> FilterBuf(Span<byte> src)
-        {
-            int statusCount = (src.Length + 63) / 64;
-            for (int i = 0; i < statusCount; i++)
-                src.Slice((i * 62) + 2).CopyTo(src.Slice(i * 62));
-            int retLen = src.Length - (statusCount * 2);
-            return src.Slice(0, retLen);
         }
         static private int FilterBuf(Span<byte> src, Span<byte> dst)
         {

@@ -249,7 +249,7 @@ namespace UsbSerialForAndroid.Net.Drivers
         protected ByteBuffer? _readBuf;
         protected MemoryQueue? _rsBuf;
         public FilterDataFn? FilterData;
-        public delegate Span<byte> FilterDataFn(Span<byte> src);
+        public delegate int FilterDataFn(Span<byte> src, Span<byte> dst);
 
         public virtual async Task<int> ReadAsync(byte[] dstBuf, int offset, int count, CancellationToken ct = default)
         {
