@@ -18,6 +18,7 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const int SilabserSetLineCtlRequestCode = 0x03;
         public const int SilabserSetBaudRate = 0x1E;
 
+        public const int UartDisable = 0x0000;
         public const int UartEnable = 0x0001;
         public const int BaudRateGenFreq = 0x384000;
         public const int McrAll = 0x0003;
@@ -68,6 +69,15 @@ namespace UsbSerialForAndroid.Net.Drivers
             //SetConfigSingle(SilabserSetBauddivRequestCode, BaudRateGenFreq / DefaultBaudRate);
             SetParameter(baudRate, dataBits, stopBits, parity);
             InitAsyncBuffers();
+        }
+        /// <summary>
+        /// close port
+        /// </summary>
+        public override void Close()
+        {
+            PurgeHwBuffers(true, true);
+            SetConfigSingle(SilabserIcfEnableRquestCode, UartDisable);
+            base.Close();
         }
         /// <summary>
         /// Set the UART enabled
@@ -201,6 +211,22 @@ namespace UsbSerialForAndroid.Net.Drivers
             int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SilabserSetMhsRequestCode, inValue, index, null, 0, ControlTimeout);
             if (result != 0)
                 throw new ControlTransferException("Set Rts failed", result, RequestTypeHostToDevice, SilabserSetMhsRequestCode, inValue, index, null, 0, ControlTimeout);
+        }
+
+
+        public const int FLUSH_READ_CODE = 0x0a;
+        public const int FLUSH_WRITE_CODE = 0x05;
+        public const int SILABSER_FLUSH_REQUEST_CODE = 0x12;
+        // note: only working on some devices, on other devices ignored w/o error
+        public void PurgeHwBuffers(bool purgeWriteBuffers, bool purgeReadBuffers)
+        {
+            int value = (purgeReadBuffers ? FLUSH_READ_CODE : 0)
+                    | (purgeWriteBuffers ? FLUSH_WRITE_CODE : 0);
+
+            if (value != 0)
+            {
+                SetConfigSingle(SILABSER_FLUSH_REQUEST_CODE, value);
+            }
         }
     }
 }
