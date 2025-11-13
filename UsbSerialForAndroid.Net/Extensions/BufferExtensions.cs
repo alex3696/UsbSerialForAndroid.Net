@@ -7,6 +7,8 @@
 
 using Android.Runtime;
 using Java.Nio;
+using System;
+using System.Runtime.InteropServices;
 
 namespace UsbSerialForAndroid.Net.Extensions
 {
@@ -48,6 +50,14 @@ namespace UsbSerialForAndroid.Net.Extensions
             byte[]? result = JNIEnv.GetArray<byte>(resultHandle);
             JNIEnv.DeleteLocalRef(resultHandle);
             return result;
+        }
+        public static void CopyTo(this ByteBuffer buffer, int srcOffset, byte[] dstArr, int offset, int count)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(count, buffer.Capacity() - srcOffset);
+            nint srcPtr = buffer.GetDirectBufferAddress();
+            ArgumentOutOfRangeException.ThrowIfZero(srcPtr);
+            srcPtr += srcOffset;
+            Marshal.Copy(srcPtr, dstArr, offset, count);
         }
     }
 }
