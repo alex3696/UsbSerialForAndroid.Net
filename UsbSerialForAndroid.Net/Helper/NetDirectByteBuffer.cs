@@ -6,8 +6,17 @@ using System.Threading;
 
 namespace UsbSerialForAndroid.Net.Helper;
 
+// Direct buffer does not require additional copying: line 320
+// https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/hardware/usb/UsbRequest.java
+
 public class NetDirectByteBuffer : IDisposable
 {
+    /// <summary>
+    /// it`s not copy its just wrapper for array
+    /// </summary>
+    /// <param name="array"></param>
+    /// <param name="offset"></param>
+    /// <param name="length"></param>
     public NetDirectByteBuffer(byte[] array, int offset, int length)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(length, array.Length - offset);
@@ -19,6 +28,10 @@ public class NetDirectByteBuffer : IDisposable
         ArgumentNullException.ThrowIfNull(jdb);
         JavaBuffer = jdb;
     }
+    /// <summary>
+    /// creates a Net array, pinned it and makes a DirectByteBuffer from it
+    /// </summary>
+    /// <param name="capacity"></param>
     public NetDirectByteBuffer(int capacity = 512)
         : this(new byte[capacity], 0, capacity)
     {
