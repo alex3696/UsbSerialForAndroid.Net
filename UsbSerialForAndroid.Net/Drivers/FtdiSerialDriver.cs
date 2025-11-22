@@ -1,5 +1,6 @@
 ﻿using Android.Hardware.Usb;
 using System;
+using System.Buffers;
 using System.Threading.Tasks;
 using UsbSerialForAndroid.Net.Enums;
 using UsbSerialForAndroid.Net.Exceptions;
@@ -15,18 +16,23 @@ namespace UsbSerialForAndroid.Net.Drivers
         public const int RequestTypeHostToDevice = UsbConstants.UsbTypeVendor | (int)UsbAddressing.Out;
         public const int ReadHeaderLength = 2; // contains MODEM_STATUS
 
-        public const int ModemControlRequest = 1;
+
         public const int ModemControlDtrEnable = 0x0101;
         public const int ModemControlDtrDisable = 0x0100;
         public const int ModemControlRtsEnable = 0x0202;
         public const int ModemControlRtsDisable = 0x0200;
 
-        public const int RestRequest = 0;
         public const int ResetAll = 0;
 
+        public const int ResetRequest = 0;
+        public const int ModemControlRequest = 1;
         public const int SetFlowControlRequest = 2;
         public const int SetBaudRateRequest = 3;
         public const int SetDataRequest = 4;
+        public const int GetModemStatusRequest = 5; // GET_MODEM_STATUS_REQUEST
+        public const int SetLatencyTimerRequest = 9; // SET_LATENCY_TIMER_REQUEST
+        public const int GetLatencyTimerRequest = 10; // GET_LATENCY_TIMER_REQUEST
+
         public FtdiSerialDriver(UsbDevice usbDevice) : base(usbDevice) { }
         /// <summary>
         /// Open the USB device
@@ -67,6 +73,7 @@ namespace UsbSerialForAndroid.Net.Drivers
                 || UsbDevice.InterfaceCount > 1;// FT2232C
 
             SetParameter(baudRate, dataBits, stopBits, parity);
+            SetLatency(1);
         }
         /// <summary>
         /// Reset the USB device
@@ -77,9 +84,9 @@ namespace UsbSerialForAndroid.Net.Drivers
             ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
 
             int index = UsbInterfaceIndex + 1;
-            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, RestRequest, ResetAll, index, null, 0, ControlTimeout);
+            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, ResetRequest, ResetAll, index, null, 0, ControlTimeout);
             if (result < 0)
-                throw new ControlTransferException("Reset failed", result, RequestTypeHostToDevice, RestRequest, ResetAll, index, null, 0, ControlTimeout);
+                throw new ControlTransferException("Reset failed", result, RequestTypeHostToDevice, ResetRequest, ResetAll, index, null, 0, ControlTimeout);
         }
         /// <summary>
         /// Initialize RTS and DTR
@@ -259,34 +266,65 @@ namespace UsbSerialForAndroid.Net.Drivers
                 throw new ControlTransferException("Setting parameters failed", result, RequestTypeHostToDevice, SetDataRequest, config, index, null, 0, ControlTimeout);
         }
         /// <summary>
+        /// Set the Latency - miliseconds
+        /// https://ftdichip.com/Support/Knowledgebase/index.html?an232beffectbuffsizeandlatency.htm
+        /// </summary>
+        /// <param name="latency"></param>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="ControlTransferException"></exception>
+        public void SetLatency(byte latency)
+        {
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            int config = latency;
+            int index = UsbInterfaceIndex + 1;
+            int result = UsbDeviceConnection.ControlTransfer((UsbAddressing)RequestTypeHostToDevice, SetLatencyTimerRequest, config, index,
+                buffer: null, length: 0, timeout: ControlTimeout);
+            if (result < 0)
+                throw new ControlTransferException("Set Latency Timer failed", result, RequestTypeHostToDevice, SetLatencyTimerRequest, config, index, null, 0, ControlTimeout);
+        }
+        /// https://ftdichip.com/Support/Knowledgebase/index.html?ft_w32_getcommmodemstatus.htm
+        /// https://microsin.net/programming/pc/ftdi-d2xx-functions-api.html?ysclid=mhfr8ts7fi434528274
+        /// <summary>
         /// Read the data
         /// </summary>
         /// <returns></returns>
         public override byte[]? Read()
         {
-            var buffer = base.Read();
-            if (buffer?.Length >= ReadHeaderLength)
+            ArgumentNullException.ThrowIfNull(UsbDeviceConnection);
+            var buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
+            try
             {
-                return buffer.AsSpan()
-                    .Slice(ReadHeaderLength, buffer.Length - ReadHeaderLength)
-                    .ToArray();
+                int len = UsbDeviceConnection.BulkTransfer(UsbEndpointRead, buffer, 0, DefaultBufferLength, ReadTimeout);
+                var data = buffer.AsSpan(0, len);
+                len = FilterBuf(data, data);
+                return buffer.AsSpan(0, len).ToArray();
             }
-            return buffer;
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
         /// <summary>
         /// Asynchronous read the data
         /// </summary>
         /// <returns></returns>
-        public override async Task<byte[]?> ReadAsync()
+        public override Task<byte[]?> ReadAsync()
         {
-            var buffer = await base.ReadAsync();
-            if (buffer?.Length >= ReadHeaderLength)
+            return Task.FromResult(Read());
+        }
+        static private int FilterBuf(Span<byte> src, Span<byte> dst)
+        {
+            int curr;
+            int retLen = 0;
+            while (2 < src.Length)
             {
-                return buffer.AsSpan()
-                    .Slice(ReadHeaderLength, buffer.Length - ReadHeaderLength)
-                    .ToArray();
+                curr = int.Min(64, src.Length);
+                src.Slice(2, curr - 2).CopyTo(dst);
+                dst = dst.Slice(curr - 2);
+                src = src.Slice(curr);
+                retLen += curr - 2;
             }
-            return buffer;
+            return retLen;
         }
         /// <summary>
         /// Set the DTR enabled
