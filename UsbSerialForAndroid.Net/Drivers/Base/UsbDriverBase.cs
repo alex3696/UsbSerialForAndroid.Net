@@ -204,12 +204,12 @@ namespace UsbSerialForAndroid.Net.Drivers
         /// async read
         /// </summary>
         /// <returns>The read data is returned after the read succeeds. Null data is returned after the read fails</returns>
-        public virtual async Task<byte[]?> ReadAsync()
+        public virtual async Task<byte[]?> ReadAsync(CancellationToken ct = default)
         {
             var dest = ArrayPool<byte>.Shared.Rent(DefaultBufferLength);
             try
             {
-                int len = await ReadAsync(dest, 0, dest.Length);
+                int len = await ReadAsync(dest, 0, dest.Length, ct);
                 return dest.AsSpan(0, len).ToArray();
             }
             finally
